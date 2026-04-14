@@ -7,21 +7,40 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from firestore.read3 import search_teacher
 
-# ===== Firebase 初始化（防止重複初始化）=====
+# ===== Firebase 初始化 =====
 if not firebase_admin._apps:
-    if os.path.exists('serviceAccountKey.json'):
-        # 本地環境
-        cred = credentials.Certificate('serviceAccountKey.json')
+
+    if os.path.exists("serviceAccountKey.json"):
+        cred = credentials.Certificate("serviceAccountKey.json")
+
     else:
-        # 雲端環境（Vercel）
-        firebase_config = os.getenv('FIREBASE_CONFIG')
-        cred_dict = json.loads(firebase_config)
-        cred = credentials.Certificate(cred_dict)
+        firebase_config = os.getenv("FIREBASE_CONFIG")
+        cred = credentials.Certificate(json.loads(firebase_config))
 
     firebase_admin.initialize_app(cred)
 
-# （可選）建立 db，如果你之後要直接用
 db = firestore.client()
+
+# ===== 這個一定要存在 =====
+def search_teacher(keyword):
+
+    collection_ref = db.collection("靜宜資管")
+    docs = collection_ref.get()
+
+    results = []
+
+    for doc in docs:
+        data = doc.to_dict()
+        name = data.get("name", "")
+        lab = data.get("lab", "")
+
+        if keyword in name:
+            results.append({
+                "name": name,
+                "lab": lab
+            })
+
+    return results
 
 app = Flask(__name__)
 
