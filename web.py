@@ -1,6 +1,27 @@
 import random
 from flask import Flask, render_template, request
 from datetime import datetime
+import os
+import json
+import firebase_admin
+from firebase_admin import credentials, firestore
+from firestore.read3 import search_teacher
+
+# ===== Firebase 初始化（防止重複初始化）=====
+if not firebase_admin._apps:
+    if os.path.exists('serviceAccountKey.json'):
+        # 本地環境
+        cred = credentials.Certificate('serviceAccountKey.json')
+    else:
+        # 雲端環境（Vercel）
+        firebase_config = os.getenv('FIREBASE_CONFIG')
+        cred_dict = json.loads(firebase_config)
+        cred = credentials.Certificate(cred_dict)
+
+    firebase_admin.initialize_app(cred)
+
+# （可選）建立 db，如果你之後要直接用
+db = firestore.client()
 
 app = Flask(__name__)
 
@@ -14,7 +35,19 @@ def index():
     link += "<a href=/account>POST傳值(帳號密碼)</a><hr>" 
     link += "<a href=/math>數學運算</a><hr>"
     link += "<a href=/cup>擲茭</a><hr>"
+    link += "<a href=/teacher>讀取Firestore資料(教師查詢)</a><hr>"
     return link
+
+@app.route("/teacher", methods=["GET", "POST"])
+def teacher():
+    results = []
+    keyword = ""
+
+    if request.method == "POST":
+        keyword = request.form["keyword"]
+        results = search_teacher(keyword)
+
+    return render_template("teacher.html", results=results, keyword=keyword)
 
 @app.route("/mis")
 def course():
@@ -23,11 +56,11 @@ def course():
 @app.route("/today")
 def today():
     now = datetime.now()
-    year  = str(now.year)   # 取得年份 
-    month = str(now.month)  # 取得月份 
-    day   = str(now.day)    # 取得日期 
+    year  = str(now.year)
+    month = str(now.month)
+    day   = str(now.day)
     now = year + "年" + month + "月" + day + "日"
-    return render_template("today.html", datetime = now)
+    return render_template("today.html", datetime=now)
 
 @app.route("/about")
 def about():
@@ -37,7 +70,7 @@ def about():
 def welcome():
     x = request.values.get("u")
     y = request.values.get("dep")
-    return render_template("welcome.html", name = x, dep = y)
+    return render_template("welcome.html", name=x, dep=y)
 
 @app.route("/account", methods=["GET", "POST"])
 def account():
@@ -68,27 +101,23 @@ def math():
                 case "*":
                     r = x * y
                 case "/":
-                    r = x / y  # 修正：之前誤寫為 x - y
+                    r = x / y
                 case _:
                     return "未知運算符號"
-            result += "=" + str(r)  + "<br><a href=/>返回首頁</a>"          
+            result += "=" + str(r) + "<br><a href=/>返回首頁</a>"          
         return result
     else:
         return render_template("math.html")
 
 @app.route('/cup', methods=["GET"])
 def cup():
-    # 檢查網址是否有 ?action=toss
-    #action = request.args.get('action')
     action = request.values.get("action")
     result = None
 
     if action == 'toss':
-        # 0 代表陽面，1 代表陰面
         x1 = random.randint(0, 1)
         x2 = random.randint(0, 1)
         
-        # 判斷結果文字
         if x1 != x2:
             msg = "聖筊：表示神明允許、同意，或行事會順利。"
         elif x1 == 0:

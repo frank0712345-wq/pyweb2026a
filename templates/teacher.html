@@ -1,0 +1,25 @@
+<h1>老師查詢系統</h1>
+
+<form method="post">
+    輸入老師名字：
+    <input type="text" name="keyword">
+    <input type="submit" value="查詢">
+</form>
+
+<hr>
+
+{% if keyword %}
+    <h3>查詢關鍵字：{{keyword}}</h3>
+
+    {% if results %}
+        <ul>
+        {% for r in results %}
+            <li>老師：{{r.name}}，研究室：{{r.lab}}</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>查無資料</p>
+    {% endif %}
+{% endif %}
+
+<a href="/">回首頁</a>
